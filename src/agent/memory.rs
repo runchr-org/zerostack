@@ -559,6 +559,16 @@ pub fn flush_compaction_summary(mem: &Mem, summary: &str, count: Option<usize>) 
     let _ = mem.append_daily(&compaction_heading(count), summary);
 }
 
+/// Effective compaction reserve including the injected memory block, which the
+/// session's own token accounting (messages only) does not count. Folding the
+/// block's estimate into the reserve makes compaction fire early enough to
+/// leave headroom for the preamble-resident memory.
+pub fn effective_reserve(base: u64, memory_block: Option<&str>) -> u64 {
+    base + memory_block
+        .map(crate::session::Session::estimate_tokens)
+        .unwrap_or(0)
+}
+
 // ---------------------------------------------------------------------------
 // Rig tools
 // ---------------------------------------------------------------------------

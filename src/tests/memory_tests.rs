@@ -10,7 +10,7 @@
 
 use crate::agent::memory::{
     MAX_INJECT_BYTES, Mem, WriteMode, WriteTarget, append_memory_block, compaction_heading,
-    flush_compaction_summary,
+    effective_reserve, flush_compaction_summary,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -495,4 +495,17 @@ fn multiple_compactions_stay_separated_and_ordered() {
     assert!(log.find("(10 msgs)").unwrap() < log.find("(7 msgs)").unwrap());
     assert_eq!(log.matches("compaction summary (").count(), 2);
     cleanup(&m);
+}
+
+// ---- compaction budget ----------------------------------------------------
+
+#[test]
+fn effective_reserve_adds_block_estimate() {
+    // no memory -> base unchanged
+    assert_eq!(effective_reserve(1000, None), 1000);
+    // some memory -> base + estimate_tokens(block) (chars/4)
+    let block = "x".repeat(400);
+    assert_eq!(effective_reserve(1000, Some(&block)), 1000 + 100);
+    // never drops below base
+    assert!(effective_reserve(1000, Some("tiny")) >= 1000);
 }
