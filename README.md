@@ -168,6 +168,12 @@ Sessions are saved to `$XDG_DATA_HOME/zerostack/sessions/`. Use `-c` to
 resume the most recent session, `-r` to browse and select one, or
 `--session <id>` to load a specific session.
 
+## Parallel Agent
+
+If you want to make multiple agents work on the same repository without having to work with git worktrees,
+zerostack now ships with `--parallel`, which enables full management of a temporary git worktree that will
+be merged and removed before exiting the agent. 
+
 ## Loop system
 
 _zerostack_ includes an iterative coding loop for long-horizon tasks. The agent repeatedly reads the task, picks an item from the plan, works on it, runs tests, updates the plan, and loops until the task is complete or the iteration limit is reached.
