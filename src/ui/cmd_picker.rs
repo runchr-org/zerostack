@@ -37,6 +37,7 @@ const COMMANDS: &[&str] = &[
     "/worktree",
     "/wt-merge",
     "/wt-exit",
+    "/btw",
 ];
 
 pub struct CommandPicker {
