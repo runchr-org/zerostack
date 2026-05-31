@@ -63,7 +63,7 @@ pub fn spawn_event_thread(
                         }
                         _ => {}
                     },
-                    Ok(event::Event::Resize(cols, rows)) => {
+                    Ok(event::Event::Resize(_cols, _rows)) => {
                         let _ = user_tx.blocking_send(UserEvent::Resize);
                     }
                     Ok(event::Event::Paste(data)) => {
