@@ -312,8 +312,9 @@ async fn main() -> anyhow::Result<()> {
     let completion_model = client.completion_model(model.to_string());
 
     #[cfg(feature = "archmd")]
-    if arch_created {
-        let arch_msg = "I've just created an empty ARCHITECTURE.md template at the project root. \
+    let arch_msg: Option<String> = if arch_created {
+        Some(
+            "I've just created an empty ARCHITECTURE.md template at the project root. \
             Explore the codebase thoroughly using the `task` tool (delegating parallel exploration to subagents) \
             and fill ARCHITECTURE.md with a high-level architecture document covering:\n\
             - Directory layout and module responsibilities\n\
@@ -323,9 +324,14 @@ async fn main() -> anyhow::Result<()> {
             - Design decisions and rationale\n\
             - External dependencies and how they are used\n\
             - Entry points for different execution modes\n\n\
-            Keep entries concise and reference specific source files.";
-        session.add_message(MessageRole::User, arch_msg);
-    }
+            Keep entries concise and reference specific source files."
+                .to_string(),
+        )
+    } else {
+        None
+    };
+    #[cfg(not(feature = "archmd"))]
+    let arch_msg: Option<String> = None;
 
     if cli.print {
         let msg = cli.message.join(" ");
@@ -434,6 +440,7 @@ async fn main() -> anyhow::Result<()> {
             ask_tx,
             ask_rx,
             sandbox,
+            arch_msg,
         )
         .await?;
     }

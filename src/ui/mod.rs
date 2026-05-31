@@ -178,6 +178,7 @@ pub async fn run_interactive(
     ask_tx: Option<AskSender>,
     mut ask_rx: Option<AskReceiver>,
     sandbox: Sandbox,
+    auto_trigger_msg: Option<String>,
 ) -> anyhow::Result<()> {
     let _guard = TerminalGuard::new()?;
 
@@ -371,6 +372,41 @@ pub async fn run_interactive(
                 let _ = renderer.write_line(&format!("worktree failed: {}", e), C_ERROR);
             }
         }
+    }
+
+    if let Some(ref trigger_msg) = auto_trigger_msg {
+        for line in trigger_msg.lines() {
+            let safe_line = sanitize_output(line);
+            renderer.write_line(&format!("> {}", safe_line), Color::Green)?;
+        }
+        renderer.write_line("", Color::White)?;
+
+        #[cfg(feature = "mcp")]
+        let mcp_ref = ensure_mcp_manager(&mut mcp_manager, cfg).await;
+        ensure_agent(
+            &mut agent,
+            &client,
+            session,
+            cli,
+            cfg,
+            context,
+            &permission,
+            &ask_tx,
+            &sandbox,
+            reasoning_enabled,
+            #[cfg(feature = "mcp")]
+            mcp_ref,
+        )
+        .await;
+        let history = crate::agent::runner::convert_history(session);
+        let runner = agent
+            .as_ref()
+            .unwrap()
+            .clone()
+            .spawn_runner(trigger_msg.to_string(), history);
+        agent_rx = Some(runner.event_rx);
+        is_running = true;
+        session.add_message(MessageRole::User, trigger_msg);
     }
 
     let (mut user_tx, mut user_rx) = mpsc::channel::<UserEvent>(64);
