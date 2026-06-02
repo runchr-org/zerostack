@@ -213,9 +213,9 @@ impl Cli {
             return CompactString::new(model);
         }
         let qm = config::quick_models_map(cfg);
-        qm.get("deepseek-v4-flash")
+        qm.get("deepseek-v4-pro")
             .map(|q| q.model.clone())
-            .unwrap_or_else(|| CompactString::new("deepseek/deepseek-v4-flash"))
+            .unwrap_or_else(|| CompactString::new("deepseek/deepseek-v4-pro"))
     }
 
     pub fn resolve_provider(&self, cfg: &config::Config) -> CompactString {
@@ -225,7 +225,7 @@ impl Cli {
             .map(CompactString::new)
             .unwrap_or_else(|| {
                 let qm = config::quick_models_map(cfg);
-                qm.get("deepseek-v4-flash")
+                qm.get("deepseek-v4-pro")
                     .map(|q| q.provider.clone())
                     .unwrap_or_else(|| CompactString::new("openrouter"))
             })

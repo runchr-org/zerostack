@@ -208,7 +208,7 @@ async fn main() -> anyhow::Result<()> {
             }
         } else if let Some(sa_prov) = &cfg.subagent_provider {
             (sa_prov.clone(), model.clone())
-        } else if let Some(dsv4) = qm.get("deepseek-v4-flash") {
+        } else if let Some(dsv4) = qm.get("deepseek-v4-pro") {
             (dsv4.provider.clone(), dsv4.model.clone())
         } else {
             (provider.clone(), model.clone())
@@ -226,7 +226,7 @@ async fn main() -> anyhow::Result<()> {
                 Ok(c) => c,
                 Err(e) => {
                     // The default subagent provider can differ from the main one
-                    // (the built-in `deepseek-v4-flash` default uses OpenRouter).
+                    // (the built-in `deepseek-v4-pro` default uses OpenRouter).
                     // If its credentials are missing, don't abort the whole program:
                     // fall back to the main agent's client and model so users on a
                     // single provider (e.g. Anthropic-only) can still start.

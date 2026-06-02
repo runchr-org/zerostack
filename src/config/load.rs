@@ -130,7 +130,7 @@ fn rich_default_config() -> Config {
     let mut cfg = Config::default();
     cfg.quick_models = Some(default_quick_models());
     cfg.provider = Some(CompactString::new("openrouter"));
-    cfg.model = Some(CompactString::new("deepseek/deepseek-v4-flash"));
+    cfg.model = Some(CompactString::new("deepseek/deepseek-v4-pro"));
     cfg.max_tokens = Some(16384);
     cfg.context_window = Some(128_000);
     cfg.compact_enabled = Some(true);

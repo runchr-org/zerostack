@@ -238,7 +238,7 @@ async fn run_prompt(
     let mut model_str = state.cli.resolve_model(&state.cfg);
 
     // Custom provider model override (if no explicit model set)
-    if (model_str.as_str() == "deepseek/deepseek-v4-flash" || state.cli.model.is_none())
+    if (model_str.as_str() == "deepseek/deepseek-v4-pro" || state.cli.model.is_none())
         && let Some(custom) = state.cfg.custom_providers_map().get(provider_str.as_str())
         && let Some(ref custom_model) = custom.model
     {
