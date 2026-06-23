@@ -41,6 +41,7 @@ pub async fn ensure_agent(
     }
     let model = client.completion_model(session.model.to_string());
     let temperature = crate::config::resolve_temperature(cli, cfg, &session.model);
+    let extra_body = crate::config::resolve_extra_body(cfg, &session.model);
     *agent = Some(
         crate::provider::build_agent(
             model,
@@ -52,6 +53,7 @@ pub async fn ensure_agent(
             sandbox.clone(),
             reasoning_enabled,
             temperature,
+            extra_body,
             mcp_manager,
         )
         .await,
@@ -77,6 +79,7 @@ pub async fn ensure_agent(
     }
     let model = client.completion_model(session.model.to_string());
     let temperature = crate::config::resolve_temperature(cli, cfg, &session.model);
+    let extra_body = crate::config::resolve_extra_body(cfg, &session.model);
     *agent = Some(
         crate::provider::build_agent(
             model,
@@ -88,6 +91,7 @@ pub async fn ensure_agent(
             sandbox.clone(),
             reasoning_enabled,
             temperature,
+            extra_body,
         )
         .await,
     );
@@ -531,6 +535,7 @@ async fn handle_agent_done(
             *agent = Some({
                 let model = client.completion_model(session.model.to_string());
                 let temperature = crate::config::resolve_temperature(cli, cfg, &session.model);
+                let extra_body = crate::config::resolve_extra_body(cfg, &session.model);
                 crate::provider::build_agent(
                     model,
                     cli,
@@ -541,6 +546,7 @@ async fn handle_agent_done(
                     sandbox.clone(),
                     true,
                     temperature,
+                    extra_body,
                     #[cfg(feature = "mcp")]
                     mcp_manager,
                 )
@@ -575,6 +581,7 @@ async fn handle_agent_done(
                 *agent = Some({
                     let model = client.completion_model(session.model.to_string());
                     let temperature = crate::config::resolve_temperature(cli, cfg, &session.model);
+                    let extra_body = crate::config::resolve_extra_body(cfg, &session.model);
                     crate::provider::build_agent(
                         model,
                         cli,
@@ -585,6 +592,7 @@ async fn handle_agent_done(
                         sandbox.clone(),
                         true,
                         temperature,
+                        extra_body,
                         #[cfg(feature = "mcp")]
                         mcp_manager,
                     )
