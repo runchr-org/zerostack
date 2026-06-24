@@ -1651,6 +1651,39 @@ pub async fn run_interactive(
                                         }
                                         let _ = crate::session::storage::save_session(session);
                                     }
+                                    #[cfg(feature = "mcp")]
+                                    Err(e) if e.to_string().starts_with(crate::ui::slash::settings::DEFER_MCP_RECONNECT) => {
+                                        let server = e.to_string()
+                                            .strip_prefix(crate::ui::slash::settings::DEFER_MCP_RECONNECT)
+                                            .unwrap_or_default()
+                                            .trim()
+                                            .to_string();
+                                        let server_cfg = cfg.mcp_servers.as_ref().and_then(|m| m.get(&server).cloned());
+                                        match (mcp_manager.as_mut(), server_cfg) {
+                                            (Some(mgr), Some(scfg)) => {
+                                                match mgr.reconnect(&server, &scfg).await {
+                                                    Ok(()) => {
+                                                        let model = client.completion_model(session.model.to_string());
+                                                        let temperature = crate::config::resolve_temperature(cli, cfg, &session.model);
+                                                        let extra_body = crate::config::resolve_extra_body(cfg, &session.model);
+                                                        agent = Some(crate::provider::build_agent(
+                                                            model, cli, cfg, context,
+                                                            permission.clone(), ask_tx.clone(), sandbox.clone(),
+                                                            reasoning_enabled, temperature, extra_body,
+                                                            mcp_manager.as_ref(),
+                                                        ).await);
+                                                        renderer.write_line(&format!("connected '{}'", server), C_AGENT)?;
+                                                    }
+                                                    Err(err) => {
+                                                        renderer.write_line(&format!("reconnect failed for '{}': {}", server, err), C_ERROR)?;
+                                                    }
+                                                }
+                                            }
+                                            _ => {
+                                                renderer.write_line(&format!("cannot reconnect '{}' (not configured)", server), C_ERROR)?;
+                                            }
+                                        }
+                                    }
                                     #[cfg(feature = "git-worktree")]
                                     Err(e) if e.downcast_ref::<crate::extras::git_worktree::DeferredWorktreeAction>().is_some() => {
                                         let action = e.downcast_ref::<crate::extras::git_worktree::DeferredWorktreeAction>().unwrap();

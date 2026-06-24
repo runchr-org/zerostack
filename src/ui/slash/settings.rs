@@ -326,8 +326,20 @@ async fn handle_editsys(parts: &[&str], ctx: &mut SlashCtx<'_>) -> anyhow::Resul
     Ok(())
 }
 
+/// Prefix understood by the caller in `ui::mod` to reconnect a single MCP
+/// server (and rebuild the agent) after a successful interactive OAuth login.
+#[cfg(feature = "mcp")]
+pub(crate) const DEFER_MCP_RECONNECT: &str = "DEFER_MCP_RECONNECT:";
+
 #[cfg(feature = "mcp")]
 async fn handle_mcp(parts: &[&str], ctx: &mut SlashCtx<'_>) -> anyhow::Result<()> {
+    if parts.len() >= 2 && parts[1] == "login" {
+        return handle_mcp_login(parts.get(2).map(|s| s.trim()), ctx).await;
+    }
+    if parts.len() >= 2 && parts[1] == "logout" {
+        return handle_mcp_logout(parts.get(2).map(|s| s.trim()), ctx);
+    }
+
     let Some(mgr) = ctx.mcp_manager else {
         write_ok(ctx.renderer, "no MCP servers configured");
         return Ok(());
@@ -377,6 +389,106 @@ async fn handle_mcp(parts: &[&str], ctx: &mut SlashCtx<'_>) -> anyhow::Result<()
         } else {
             write_error(ctx.renderer, format!("unknown MCP server: '{}'", name));
         }
+    }
+    Ok(())
+}
+
+/// Resolve a URL-based server's OAuth settings + url from config, or report why not.
+#[cfg(feature = "mcp")]
+fn resolve_oauth_server(
+    ctx: &SlashCtx<'_>,
+    name: &str,
+) -> Result<(String, crate::extras::mcp::config::OAuthSettings), String> {
+    use crate::extras::mcp::config::McpServerConfig;
+    let servers = ctx
+        .cfg
+        .mcp_servers
+        .as_ref()
+        .ok_or_else(|| "no MCP servers configured".to_string())?;
+    let server = servers
+        .get(name)
+        .ok_or_else(|| format!("unknown MCP server: '{name}'"))?;
+    match server {
+        McpServerConfig::Url { url, oauth, .. } => {
+            let settings = oauth
+                .as_ref()
+                .and_then(|o| o.settings())
+                .ok_or_else(|| format!("server '{name}' does not have OAuth enabled"))?;
+            Ok((url.clone(), settings))
+        }
+        McpServerConfig::Command { .. } => Err(format!(
+            "server '{name}' is command-based; OAuth applies to URL servers"
+        )),
+    }
+}
+
+#[cfg(feature = "mcp")]
+async fn handle_mcp_login(name: Option<&str>, ctx: &mut SlashCtx<'_>) -> anyhow::Result<()> {
+    let Some(name) = name.filter(|n| !n.is_empty()) else {
+        write_error(ctx.renderer, "usage: /mcp login <server>");
+        return Ok(());
+    };
+    let (url, settings) = match resolve_oauth_server(ctx, name) {
+        Ok(v) => v,
+        Err(e) => {
+            write_error(ctx.renderer, e);
+            return Ok(());
+        }
+    };
+
+    write_ok(
+        ctx.renderer,
+        format!("starting OAuth login for '{name}'..."),
+    );
+    let login = match crate::extras::mcp::oauth::begin_login(name, &url, &settings).await {
+        Ok(l) => l,
+        Err(e) => {
+            write_error(ctx.renderer, format!("login setup failed: {e}"));
+            return Ok(());
+        }
+    };
+
+    write_ok(ctx.renderer, "open this URL in your browser to authorize:");
+    write_result(ctx.renderer, &login.auth_url);
+    write_ok(
+        ctx.renderer,
+        format!(
+            "waiting for the redirect on 127.0.0.1:{} (up to 3 min)...",
+            settings.redirect_port()
+        ),
+    );
+    // Force a draw so the URL is visible before we block on the callback.
+    ctx.renderer.render_viewport()?;
+
+    match login
+        .wait_for_callback(std::time::Duration::from_secs(180))
+        .await
+    {
+        Ok(()) => {
+            write_ok(ctx.renderer, format!("authorized '{name}', connecting..."));
+            // Hand control back to the event loop to reconnect with the new token.
+            Err(anyhow::anyhow!("{}{}", DEFER_MCP_RECONNECT, name))
+        }
+        Err(e) => {
+            write_error(ctx.renderer, format!("login failed: {e}"));
+            Ok(())
+        }
+    }
+}
+
+#[cfg(feature = "mcp")]
+fn handle_mcp_logout(name: Option<&str>, ctx: &mut SlashCtx<'_>) -> anyhow::Result<()> {
+    let Some(name) = name.filter(|n| !n.is_empty()) else {
+        write_error(ctx.renderer, "usage: /mcp logout <server>");
+        return Ok(());
+    };
+    match crate::extras::mcp::oauth::logout(name) {
+        Ok(true) => write_ok(
+            ctx.renderer,
+            format!("removed stored OAuth token for '{name}' (effective next start)"),
+        ),
+        Ok(false) => write_ok(ctx.renderer, format!("no stored OAuth token for '{name}'")),
+        Err(e) => write_error(ctx.renderer, format!("logout failed: {e}")),
     }
     Ok(())
 }
